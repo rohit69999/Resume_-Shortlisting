@@ -129,20 +129,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch
 5. Open a Pull Request
 
-## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Groq for providing the LLM API
-- Streamlit for the amazing web framework
-- Contributors and testers
-
-## 📞 Support
-
-If you have any questions or run into issues, please open an issue in the GitHub repository.
-
-## ⚠️ Disclaimer
-
-This tool is meant to assist in the resume screening process but should not be used as the sole decision-maker in hiring processes. Human review is essential for fair hiring practices.
