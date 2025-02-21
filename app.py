@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import tempfile
 import os
-from resumen import ResumeRanker  # Assuming the updated ResumeRanker class is saved in resume.py
+from resume import ResumeRanker  # Assuming the updated ResumeRanker class is saved in resume.py
 
 def save_uploaded_files(uploaded_files):
     """Save uploaded files to a temporary directory and return the directory path."""
