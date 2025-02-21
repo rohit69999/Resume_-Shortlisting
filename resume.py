@@ -10,8 +10,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_groq import ChatGroq
-import google.generativeai as genai
-from langchain_google_genai import GoogleGenerativeAI
+
+
 
 class ParallelResumeRanker:
     def __init__(self, api_key: str, max_workers: int = 4):
