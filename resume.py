@@ -24,7 +24,7 @@ logging.basicConfig(level=logging.INFO)
 class ResumeRanker:
     def __init__(self,model=str, scoring_weights: Dict[str, float] = None, ranking_priority: List[str] = None):
         """Initialize the resume ranker with API key and scoring configuration."""
-        self.api_key = os.getenv("OPENAI_API_KEY") 
+        self.api_key = "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" 
         if not self.api_key:
             raise ValueError("OpenAI API key is missing. Add it to the .env file.")
         self.model = model
