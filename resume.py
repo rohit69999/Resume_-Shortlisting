@@ -28,8 +28,8 @@ class ResumeRanker:
         """Initialize the resume ranker with API key and scoring configuration."""
         self.gpt_api_key = st.secrets ["OPENAI_API_KEY"]
         self.groq_api_key = st.secrets ["GROQ_API_KEY"]
-        if not self.api_key:
-            raise ValueError("OpenAI API key is missing. Add it to the .env file.")
+        if not self.gpt_api_key or not self.groq_api_key:
+            raise ValueError("API key is missing. Add it to the .env file.")
         self.model = model
         if self.model == "gpt-4o" or "gpt-4o-mini":
             self.llm = ChatOpenAI(
