@@ -16,30 +16,32 @@ import time
 from dotenv import load_dotenv
 import streamlit as st
 load_dotenv()
-
-
-
-
-
+ 
+ 
+ 
+ 
+ 
 logging.basicConfig(level=logging.INFO)
-
+ 
 class ResumeRanker:
     def __init__(self,model=str, scoring_weights: Dict[str, float] = None, ranking_priority: List[str] = None):
         """Initialize the resume ranker with API key and scoring configuration."""
-        self.api_key = st.secrets ["OPENAI_API_KEY"] 
+        self.gpt_api_key = st.secrets ["OPENAI_API_KEY"]
+        self.groq_api_key = st.secrets ["GROQ_API_KEY"]
         if not self.api_key:
             raise ValueError("OpenAI API key is missing. Add it to the .env file.")
         self.model = model
-        self.llm = ChatOpenAI(
-            model=model,
-            api_key=self.api_key,
-            temperature=0.1
-        )
-        # self.api_key = api_key
-        # self.llm = ChatGroq(
-        #     model="deepseek-r1-distill-llama-70b",
-        #     api_key=api_key
-        # )
+        if self.model == "gpt-4o" or "gpt-4o-mini":
+            self.llm = ChatOpenAI(
+                model=model,
+                api_key=self.gpt_api_key,
+                temperature=0.1
+            )
+        else:
+            self.llm = ChatGroq(
+                model=model,
+                api_key=self.groq_api_key
+            )
         # Get the current month and year
         self.current_month_year = datetime.today().strftime("%B %Y")
         # Default scoring weights
@@ -50,7 +52,7 @@ class ResumeRanker:
             "certifications": 0.10,
             "location": 0.10
         }
-
+ 
         # Default tie-breaking priority
         self.ranking_priority = ranking_priority or [
             "skills_match",
@@ -64,7 +66,7 @@ class ResumeRanker:
         
         # Combined prompt template for both extraction and scoring
         self.unified_prompt_template = """You are an expert HR analyst. Your task is to extract information from the resume and evaluate it based on the job requirements.
-
+ 
     1. Extract the following candidate details:
     - Full name
     - Years of experience: Calculate this by:
@@ -81,21 +83,21 @@ class ResumeRanker:
     - Location (city, state)
     - Email
     - Phone number
-
+ 
     2. Evaluate the resume using the following criteria and weights:
     {criteria_list}
-
+ 
     Additional Instructions:
     1. Score each criterion from 0 to 100 based on job requirements.
     2. Calculate the weighted total score.
     3. For tied totals, prioritize in this order: {priority_order}.
-
+ 
     Job Requirements:
     {job_desc}
-
+ 
     Resume Content:
     {resume}
-
+ 
     Return the response as a valid JSON object with the following structure:
     {{
         "extracted_info": {{
@@ -118,29 +120,29 @@ class ResumeRanker:
         "explanation": "brief reasoning for scores, including experience calculation details"
         }}
     }}
-
+ 
     IMPORTANT: Be precise in experience calculation and provide detailed reasoning in the explanation field."""
-
+ 
     def update_scoring_weights(self, new_weights: Dict[str, float]):
         """Update scoring weights and validate totals."""
         total = sum(new_weights.values())
         if not (0.99 <= total <= 1.01):
             raise ValueError("Weights must sum to ~1.0")
         self.scoring_weights = new_weights
-
+ 
     def update_ranking_priority(self, new_priority: List[str]):
         """Update tie-breaking priority order."""
         if set(new_priority) != set(self.scoring_weights.keys()):
             raise ValueError("Priority list must contain all scoring criteria")
         self.ranking_priority = new_priority
-
+ 
     def _generate_criteria_list(self) -> str:
         """Generate formatted criteria list for prompt."""
         return "\n".join(
             [f"- {k.capitalize()}: {v * 100}%"
              for k, v in self.scoring_weights.items()]
         )
-
+ 
     def read_pdf(self, file_path: str) -> str:
         """Read PDF file and return text content."""
         try:
@@ -153,7 +155,7 @@ class ResumeRanker:
         except Exception as e:
             print(f"Error reading PDF {file_path}: {str(e)}")
             return ""
-
+ 
     def read_docx(self, file_path: str) -> str:
         """Read DOCX file and return text content."""
         try:
@@ -162,7 +164,7 @@ class ResumeRanker:
         except Exception as e:
             print(f"Error reading DOCX {file_path}: {str(e)}")
             return ""
-
+ 
     def load_resumes(self, directory: str) -> List[Dict]:
         """Load resumes from directory."""
         documents = []
@@ -171,13 +173,13 @@ class ResumeRanker:
             os.path.join(directory, "*.docx"),
             os.path.join(directory, "*.doc")
         ]
-
+ 
         all_files = []
         for pattern in file_patterns:
             all_files.extend(glob.glob(pattern))
-
+ 
         print(f"Found {len(all_files)} files in directory")
-
+ 
         for file_path in all_files:
             try:
                 content = ""
@@ -185,7 +187,7 @@ class ResumeRanker:
                     content = self.read_pdf(file_path)
                 elif file_path.lower().endswith(('.docx', '.doc')):
                     content = self.read_docx(file_path)
-
+ 
                 if content:
                     documents.append({
                         "content": content,
@@ -194,13 +196,13 @@ class ResumeRanker:
                     print(f"Successfully loaded: {os.path.basename(file_path)}")
                 else:
                     print(f"No content extracted from: {os.path.basename(file_path)}")
-
+ 
             except Exception as e:
                 print(f"Error processing {file_path}: {str(e)}")
                 continue
-
+ 
         return documents
-
+ 
     def clean_llm_output(self, result: str) -> str:
         """Extract valid JSON from the LLM result."""
         try:
@@ -214,7 +216,7 @@ class ResumeRanker:
         except Exception as e:
             print(f"Error cleaning LLM output: {str(e)}")
             return "{}"
-
+ 
     def analyze_resume(self, resume_text: str, job_description: str) -> Dict:
         """Analyze resume with combined extraction and scoring in a single LLM call."""
         start_time = time.time()  # Start timing
@@ -224,8 +226,8 @@ class ResumeRanker:
                 input_variables=["job_desc", "resume", "criteria_list", "priority_order"]
             )
             logging.info("LLM response received")
-
-
+ 
+ 
             chain = prompt | self.llm | StrOutputParser()
             result = chain.invoke({
                 "job_desc": job_description,
@@ -234,13 +236,13 @@ class ResumeRanker:
                 "priority_order": ", ".join(self.ranking_priority),
                 "current_month_year": self.current_month_year
             })
-
+ 
             cleaned_result = self.clean_llm_output(result)
             analysis = json.loads(cleaned_result)
             logging.info(f"Extracted Info: {analysis.get('extracted_info', {})}")
             logging.info(f"Evaluation: {analysis.get('evaluation', {})}")
-
-
+ 
+ 
             # Default structures
             default_info = {
                 "name": "Not found",
@@ -252,7 +254,7 @@ class ResumeRanker:
                 "email": "Not found",
                 "phone": "Not found"
             }
-
+ 
             default_scores = {
                 "skills_match": 0,
                 "experience": 0,
@@ -262,18 +264,18 @@ class ResumeRanker:
                 "total_score": 0,
                 "explanation": "Error occurred while analyzing."
             }
-
+ 
             # Merge with defaults for missing fields
             extracted_info = {**default_info, **analysis.get("extracted_info", {})}
             evaluation = {**default_scores, **analysis.get("evaluation", {})}
-
+ 
             # Recalculate total score
             total = sum(
                 evaluation.get(criterion, 0) * self.scoring_weights[criterion]
                 for criterion in self.scoring_weights
             )
             evaluation["total_score"] = round(total, 2)
-
+ 
             # Calculate processing time
             processing_time = time.time() - start_time
             
@@ -282,7 +284,7 @@ class ResumeRanker:
                 "evaluation": evaluation,
                 "processing_time": processing_time
             }
-
+ 
         except Exception as e:
             processing_time = time.time() - start_time
             print(f"Error analyzing resume: {str(e)}")
@@ -291,19 +293,19 @@ class ResumeRanker:
                 "evaluation": default_scores,
                 "processing_time": processing_time
             }
-
+ 
     def process_resumes(self, resume_dir: str, job_description: str) -> pd.DataFrame:
         """Process resumes with combined extraction and scoring."""
         overall_start_time = time.time()  # Start timing overall process
         print("Loading resumes...")
         documents = self.load_resumes(resume_dir)
-
+ 
         if not documents:
             print("No resumes found in the specified directory")
             return pd.DataFrame()
-
+ 
         print(f"\nProcessing {len(documents)} resumes...")
-
+ 
         results = []
         total_processing_time = 0
         
@@ -317,13 +319,13 @@ class ResumeRanker:
                 scores = analysis["evaluation"]
                 processing_time = analysis["processing_time"]
                 total_processing_time += processing_time
-
+ 
                 # Convert experience_years to float if possible
                 try:
                     experience_years = float(info.get('experience_years', 0))
                 except (ValueError, TypeError):
                     experience_years = 0
-
+ 
                 # Combine results
                 result = {
                     'name': info.get('name', 'Not found'),
@@ -348,17 +350,17 @@ class ResumeRanker:
             except Exception as e:
                 print(f"Error processing resume {i}: {str(e)}")
                 continue
-
+ 
         overall_time = time.time() - overall_start_time
         print(f"\nOverall Processing Statistics:")
         print(f"Total time taken: {overall_time:.2f} seconds")
         print(f"Average time per resume: {(total_processing_time/len(documents)):.2f} seconds")
         print(f"Total LLM processing time: {total_processing_time:.2f} seconds")
-
+ 
         if not results:
             print("No results to process")
             return pd.DataFrame()
-
+ 
         # Create DataFrame with all columns
         df = pd.DataFrame(results)
         
@@ -370,9 +372,11 @@ class ResumeRanker:
         
         # Reorder columns for better readability
         columns = [
-            'Rank', 'name', 'total_score', 'skills', 'experience_years', 'phone', 'email', 
+            'Rank', 'name', 'total_score', 'skills', 'experience_years', 'phone', 'email',
             'location_info', 'File', 'processing_time'  # Added processing_time to columns
         ]
         df = df[columns]
         df.set_index('Rank', inplace=True)
         return df
+ 
+ 
