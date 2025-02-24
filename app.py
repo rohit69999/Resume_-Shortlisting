@@ -3,7 +3,7 @@ import pandas as pd
 import tempfile
 import os
 from resume import ResumeRanker  # Assuming the updated ResumeRanker class is saved in resume.py
-
+ 
 def save_uploaded_files(uploaded_files):
     """Save uploaded files to a temporary directory and return the directory path."""
     # Create a temporary directory
@@ -18,7 +18,7 @@ def save_uploaded_files(uploaded_files):
             f.write(uploaded_file.getbuffer())
     
     return temp_dir
-
+ 
 def main():
     st.title("Resume Ranker")
     st.write("Upload resumes and job description to rank candidates.")
@@ -27,12 +27,12 @@ def main():
     # api_key = st.text_input("Enter your API key:", type="password")
     model_choice = st.selectbox(
         "Choose AI Model:",
-        ["gpt-4o", "gpt-4o-mini"],  # Add more models if needed
+        ["gpt-4o", "gpt-4o-mini","deepseek-r1-distill-llama-70b"],  # Add more models if needed
         index=0  # Default to the first option
     )
     # File uploader for multiple PDFs, DOCX, and DOC files
     uploaded_files = st.file_uploader(
-        "Upload resumes (PDF, DOC, DOCX)", 
+        "Upload resumes (PDF, DOC, DOCX)",
         type=["pdf", "doc", "docx"],
         accept_multiple_files=True
     )
@@ -129,6 +129,8 @@ def main():
                     
             except Exception as e:
                 st.error(f"An error occurred: {str(e)}")
-
+ 
 if __name__ == "__main__":
     main()
+ 
+ 
