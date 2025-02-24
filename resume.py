@@ -31,7 +31,7 @@ class ResumeRanker:
         if not self.gpt_api_key or not self.groq_api_key:
             raise ValueError("API key is missing. Add it to the .env file.")
         self.model = model
-        if self.model == "gpt-4o" or "gpt-4o-mini":
+        if self.model in ["gpt-4o","gpt-4o-mini"]:
             self.llm = ChatOpenAI(
                 model=model,
                 api_key=self.gpt_api_key,
