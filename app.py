@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import tempfile
 import os
+import shutil 
 from resume import ResumeRanker
 
 def save_uploaded_files(uploaded_files):
