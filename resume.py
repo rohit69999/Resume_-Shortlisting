@@ -325,6 +325,7 @@ Return JSON format:
         print(f"\nProcessing {len(documents)} resumes...")
 
         results = []
+        unsupported_files = []
         total_processing_time = 0
 
         for i, doc in enumerate(documents, 1):
@@ -339,6 +340,27 @@ Return JSON format:
                 total_processing_time += processing_time
 
                 total_score = scores.get('total_score', 0)
+
+                # If the extracted name is "John Doe", mark as unsupported
+                if info.get('name', '').strip().lower() == "john doe":
+                    unsupported_files.append({
+                        'name': 'File Unsupported',
+                        'total_score': 0,
+                        'skills_match': 0,
+                        'experience': 0,
+                        'education': 0,
+                        'certifications': 0,
+                        'location': 0,
+                        'experience_years': 0,
+                        'phone': 'File Unsupported',
+                        'email': 'File Unsupported',
+                        'skills': 'File Unsupported',
+                        'location_info': 'File Unsupported',
+                        'File': os.path.basename(doc["metadata"]["source"]),
+                        'processing_time': round(processing_time, 2)
+                    })
+                    print(f"Marked as unsupported: {os.path.basename(doc['metadata']['source'])}")
+                    continue
 
                 # Apply threshold: Only process resumes with a score > 50
                 if total_score > 50:
@@ -363,7 +385,7 @@ Return JSON format:
                         'skills': ", ".join(info.get('skills', [])),
                         'location_info': info.get('location', 'Not found'),
                         'File': os.path.basename(doc["metadata"]["source"]),
-                        'processing_time': round(processing_time, 2)  # Add processing time to results
+                        'processing_time': round(processing_time, 2)
                     }
                     results.append(result)
                     print(f"Match Score: {total_score}")
@@ -381,24 +403,36 @@ Return JSON format:
         print(f"Average time per resume: {(total_processing_time/len(documents)):.2f} seconds")
         print(f"Total LLM processing time: {total_processing_time:.2f} seconds")
 
-        if not results:
+        if not results and not unsupported_files:
             print("No results to process")
             return pd.DataFrame()
 
-        # Create DataFrame with all columns
-        df = pd.DataFrame(results)
+        # Create DataFrame for valid resumes
+        df_valid = pd.DataFrame(results)
 
-        # Sort by total score
-        df = df.sort_values('total_score', ascending=False).reset_index(drop=True)
+        if not df_valid.empty:
+            # Sort by total score
+            df_valid = df_valid.sort_values('total_score', ascending=False).reset_index(drop=True)
 
-        # Add rank column and set as index
-        df.insert(0, 'Rank', range(1, len(df) + 1))
+            # Add rank column and set as index
+            df_valid.insert(0, 'Rank', range(1, len(df_valid) + 1))
+
+        # Create DataFrame for unsupported files
+        df_unsupported = pd.DataFrame(unsupported_files)
+
+        if not df_valid.empty and not df_unsupported.empty:
+            # Combine valid and unsupported, keeping unsupported at the end
+            df_final = pd.concat([df_valid, df_unsupported], ignore_index=True)
+        elif not df_valid.empty:
+            df_final = df_valid
+        else:
+            df_final = df_unsupported
 
         # Reorder columns for better readability
         columns = [
             'Rank', 'name', 'total_score', 'skills', 'experience_years', 'phone', 'email',
-            'location_info', 'File', 'processing_time'  # Added processing_time to columns
+            'location_info', 'File', 'processing_time'
         ]
-        df = df[columns]
-        df.set_index('Rank', inplace=True)
-        return df
+        df_final = df_final.reindex(columns=columns, fill_value='N/A')
+
+        return df_final
