@@ -19,5 +19,4 @@ openpyxl>=3.1.2
 watchdog>=3.0.0
 openai
 langchain-openai
-langchain-docling
-torch>=2.6
+
