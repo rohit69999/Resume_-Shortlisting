@@ -23,8 +23,6 @@ class ResumeRanker:
         """Initialize the resume ranker with API key and scoring configuration."""
         self.gpt_api_key = st.secrets["OPENAI_API_KEY"]
         self.groq_api_key = st.secrets["GROQ_API_KEY"]
-        # self.gpt_api_key = os.getenv("OPENAI_API_KEY")
-        # self.groq_api_key = os.getenv("GROQ_API_KEY")
         self.model = model
         if self.model == "gpt-4o" or "gpt-4o-mini":
             self.llm = ChatOpenAI(
@@ -160,7 +158,7 @@ class ResumeRanker:
                 loader = DoclingLoader(file_path=[file_path])
                 docs = loader.load()
 
-                if docs:
+                if docs and docs[0].page_content.strip():  # Check if content is not empty
                     content = docs[0].page_content  # Extract text content
                     documents.append({
                         "content": content,
@@ -168,11 +166,20 @@ class ResumeRanker:
                     })
                     print(f"Successfully loaded: {os.path.basename(file_path)}")
                 else:
-                    print(f"No content extracted from: {os.path.basename(file_path)}")
+                    # If the file cannot be parsed or is empty, log an error
+                    print(f"File not supported or could not be parsed: {os.path.basename(file_path)}")
+                    documents.append({
+                        "content": "File not supported",
+                        "metadata": {"source": file_path}
+                    })
 
             except Exception as e:
+                # If an exception occurs, log the error and mark the file as unsupported
                 print(f"Error processing {file_path}: {str(e)}")
-                continue
+                documents.append({
+                    "content": "File not supported",
+                    "metadata": {"source": file_path}
+                })
 
         return documents
 
@@ -194,6 +201,31 @@ class ResumeRanker:
         """Analyze resume with combined extraction and scoring in a single LLM call."""
         start_time = time.time()  # Start timing
         try:
+            if resume_text == "File not supported":
+                # If the file is not supported, return a placeholder result
+                return {
+                    "extracted_info": {
+                        "name": "File not supported",
+                        "experience_years": 0,
+                        "skills": [],
+                        "education": [],
+                        "certifications": [],
+                        "location": "File not supported",
+                        "email": "File not supported",
+                        "phone": "File not supported"
+                    },
+                    "evaluation": {
+                        "skills_match": 0,
+                        "experience": 0,
+                        "education": 0,
+                        "certifications": 0,
+                        "location": 0,
+                        "total_score": 0,
+                        "explanation": "File not supported or could not be parsed."
+                    },
+                    "processing_time": 0
+                }
+
             prompt = PromptTemplate(
                 template=self.unified_prompt_template,
                 input_variables=["job_desc", "resume", "criteria_list", "priority_order"]
@@ -260,8 +292,25 @@ class ResumeRanker:
             processing_time = time.time() - start_time
             print(f"Error analyzing resume: {str(e)}")
             return {
-                "extracted_info": default_info,
-                "evaluation": default_scores,
+                "extracted_info": {
+                    "name": "Error",
+                    "experience_years": 0,
+                    "skills": [],
+                    "education": [],
+                    "certifications": [],
+                    "location": "Error",
+                    "email": "Error",
+                    "phone": "Error"
+                },
+                "evaluation": {
+                    "skills_match": 0,
+                    "experience": 0,
+                    "education": 0,
+                    "certifications": 0,
+                    "location": 0,
+                    "total_score": 0,
+                    "explanation": f"Error occurred while analyzing: {str(e)}"
+                },
                 "processing_time": processing_time
             }
 
