@@ -20,3 +20,4 @@ watchdog>=3.0.0
 openai
 langchain-openai
 langchain-docling
+torch>=2.6
