@@ -19,6 +19,35 @@ import streamlit as st
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
+# Initialize OpenTelemetry tracing with error handling
+try:
+    from phoenix.otel import register
+    from openinference.instrumentation.openai import OpenAIInstrumentor
+    
+    # Set environment variables for Phoenix
+    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = "api_key=e478b46dee0e9c61310:6610137"
+    os.environ["PHOENIX_CLIENT_HEADERS"] = "api_key=e478b46dee0e9c61310:6610137"
+    os.environ["PHOENIX_COLLECTOR_ENDPOINT"] = "https://app.phoenix.arize.com"
+
+    # Initialize tracer provider with error handling
+    try:
+        tracer_provider = register(
+            project_name="Profile Ranking System",
+            endpoint="https://app.phoenix.arize.com/v1/traces",
+            auto_instrument=True
+        )
+        
+        # Instrument OpenAI only if tracer provider initialization succeeded
+        OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
+        logging.info("OpenTelemetry tracing initialized successfully")
+        
+    except Exception as e:
+        logging.error(f"Failed to initialize OpenTelemetry tracing: {str(e)}")
+        tracer_provider = None
+        
+except ImportError:
+    logging.warning("Phoenix OpenTelemetry packages not found, tracing disabled")
+    tracer_provider = None
 
 class ResumeRanker:
     def __init__(self, model: str, scoring_weights: Dict[str, float] = None, ranking_priority: List[str] = None):
